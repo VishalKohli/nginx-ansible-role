@@ -1,0 +1,53 @@
+- name: Install JAVA
+  win_chocolatey:
+    name: "{{ jdk_package }}"
+    state: present
+    version: "{{ java_major_version }}.{{ java_minor_version }}"
+
+- name: Set Java_home
+  win_environment:
+    name: JAVA_HOME
+    value: 'c:\program files\java\jdk1.{{ java_major_version }}_{{ java_minor_version }}'
+    state: present
+    level: machine
+
+- name: Add Java to path
+  win_path:
+    elements:
+      - 'c:\program files\java\jdk1.{{ java_major_version }}_{{ java_minor_version }}\bin'
+    scope: machine
+    state: present
+
+- name: check jdk shell
+  win_shell: "java -version"
+  args:
+    executable: cmd
+  register: java_version
+
+- debug: msg="{{java_version.stderr_lines}}"
+
+- name: move test java file to the host
+  win_copy:
+    src: ./roles/java/files/java_test.java
+    dest: c:\java_test.java
+
+- name: compile the java_test file
+  win_command: cmd.exe /c cd c:\ && javac java_test.java
+
+- name: run the java program
+  win_shell: java GetMyIPAddress chdir=C:\
+  args:
+    executable: cmd
+  register: pgm_out
+
+- debug: msg="{{pgm_out.stdout_lines}}"
+
+- name: remove the test file from the host
+  win_file:
+    path: c:\java_test.java
+    state: absent
+
+- name: remove the compiled file
+  win_file:
+    path: c:\GetMyIPAddress.class
+    state: absent
